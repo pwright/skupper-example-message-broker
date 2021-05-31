@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activemq-artemis
+  labels:
+    app: activemq-artemis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq-artemis
+  template:
+    metadata:
+      labels:
+        app: activemq-artemis
+    spec:
+      containers:
+        - name: activemq-artemis
+          image: quay.io/artemiscloud/activemq-artemis-broker
+          env:
+            - name: AMQ_USER
+              value: admin
+            - name: AMQ_PASSWORD
+              value: peripatetic-possum
+          ports:
+            - containerPort: 5672

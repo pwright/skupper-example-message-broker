@@ -1,0 +1,30 @@
+contexts:
+  west:
+    name: west
+    kubeconfig: ~/.kube/config-west
+    namespace: west
+  east:
+    name: east
+    kubeconfig: ~/.kube/config-east
+    namespace: east
+phases:
+  - name: setup
+    sessions:
+      - context: west
+        steps:
+          - run: skupper init
+            await: [deployment/skupper-service-controller:Available, deployment/skupper-router:Available]
+          - run: skupper token create ~/secret.yaml
+          - run: kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
+          - run: kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
+      - context: east
+        steps:
+          - run: skupper init --ingress none
+          - run: skupper link create ~/secret.yaml
+          - run: kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
+          - run: skupper expose deployment/hello-world-backend --port 8080
+  - name: test
+    sessions:
+      - context: west
+        steps:
+          - run: "curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')"
