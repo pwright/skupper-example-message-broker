@@ -2,6 +2,17 @@
 
 A minimal HTTP application deployed across Kubernetes clusters using [Skupper](https://skupper.io/)
 
+* [Overview](#overview)
+* [Prerequisites](#prerequisites)
+* [Step 1: Configure separate kubeconfigs](#step-1-configure-separate-kubeconfigs)
+* [Step 2: Log in to your clusters](#step-2-log-in-to-your-clusters)
+* [Step 3: Create your namespaces](#step-3-create-your-namespaces)
+* [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
+* [Step 5: Link your namespaces](#step-5-link-your-namespaces)
+* [Step 6: Deploy your services](#step-6-deploy-your-services)
+* [Step 7: Expose your services](#step-7-expose-your-services)
+* [Step 8: Test your application](#step-8-test-your-application)
+
 ## Overview
 
 This example is a very simple multi-service HTTP application that can
