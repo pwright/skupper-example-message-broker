@@ -1,0 +1,55 @@
+kubeconfigs:
+  west:
+    file: ~/.kube/config-west
+    namespace: west
+  east:
+    file: ~/.kube/config-east
+    namespace: east
+steps:
+  - name: setup-namespaces
+    sessions:
+      - kubeconfig: west
+        commands:
+          - run: skupper init
+            await: [deployment/skupper-service-controller, deployment/skupper-router]
+      - kubeconfig: east
+        commands:
+          - run: skupper init --ingress none
+            await: [deployment/skupper-service-controller, deployment/skupper-router]
+  - name: link-namespaces
+    sessions:
+      - kubeconfig: west
+        commands:
+          - run: skupper token create ~/west.token
+      - kubeconfig: east
+        commands:
+          - run: skupper init --ingress none
+            await: [deployment/skupper-service-controller, deployment/skupper-router]
+          - run: skupper link create ~/west.token
+            sleep: 10
+          - run: skupper link status
+  - name: deploy-services
+    sessions:
+      - kubeconfig: west
+        commands:
+          - run: kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
+            await: [deployment/hello-world-frontend]
+      - kubeconfig: east
+        commands:
+          - run: kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
+            await: [deployment/hello-world-backend]
+  - name: expose-services
+    sessions:
+      - kubeconfig: west
+        commands:
+          - run: kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
+            sleep: 10
+      - kubeconfig: east
+        commands:
+          - run: skupper expose deployment/hello-world-backend --port 8080
+            sleep: 10
+  - name: test
+    sessions:
+      - kubeconfig: west
+        commands:
+          - run: "curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')"

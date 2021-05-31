@@ -1,0 +1,55 @@
+from skewer import *
+
+@command
+def test(app):
+    import yaml
+
+    with open("skewer.yaml") as skewer_file:
+        work_dir = make_temp_dir()
+        minikube_profile = "skupper-example-message-broker"
+        skewer_data = yaml.safe_load(skewer_file)
+
+        with open("/tmp/minikube-tunnel-output", "w") as tunnel_output_file:
+            try:
+                run(f"minikube start -p {minikube_profile}")
+                run(f"minikube profile {minikube_profile}")
+
+                with start("minikube tunnel", output=tunnel_output_file):
+                    kubeconfigs = setup_kubeconfigs(work_dir, skewer_data)
+                    run_steps(work_dir, skewer_data, kubeconfigs)
+            finally:
+                run(f"minikube delete -p {minikube_profile}")
+
+def setup_kubeconfigs(work_dir, skewer_data):
+    kubeconfigs = dict()
+
+    for name, value in skewer_data["kubeconfigs"].items():
+        kubeconfig_file = value["file"].replace("~", work_dir)
+        namespace = value["namespace"]
+
+        with working_env(KUBECONFIG=kubeconfig_file):
+            run(f"minikube update-context")
+            run(f"kubectl create namespace {namespace}")
+            run(f"kubectl config set-context --current --namespace {namespace}")
+
+        kubeconfigs[name] = kubeconfig_file
+
+    return kubeconfigs
+
+def run_steps(work_dir, skewer_data, kubeconfigs):
+    for phase_data in skewer_data["steps"]:
+        for session_data in phase_data["sessions"]:
+            kubeconfig_name = session_data["kubeconfig"]
+            kubeconfig_file = kubeconfigs[kubeconfig_name]
+
+            with working_env(KUBECONFIG=kubeconfig_file):
+                for command_data in session_data["commands"]:
+                    run(command_data["run"].replace("~", work_dir), shell=True)
+
+                    if "await" in command_data:
+                        for resource in command_data["await"]:
+                            group, name = resource.split("/", 1)
+                            await_resource(group, name)
+
+                    if "sleep" in command_data:
+                        sleep(command_data["sleep"])
