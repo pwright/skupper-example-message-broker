@@ -43,17 +43,17 @@ isolated `kubectl` configurations, one for each namespace.  In
 this example, we will use distinct kubeconfigs on separate
 consoles.
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 export KUBECONFIG=~/.kube/config-west
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 export KUBECONFIG=~/.kube/config-east
-```
+~~~
 
 ## Step 2: Log in to your clusters
 
@@ -61,92 +61,81 @@ export KUBECONFIG=~/.kube/config-east
 
 ## Step 3: Create your namespaces
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 kubectl create namespace west
 kubectl config set-context --current --namespace west
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 kubectl create namespace east
 kubectl config set-context --current --namespace east
-```
+~~~
 
 ## Step 4: Install Skupper in your namespaces
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 skupper init
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 skupper init --ingress none
-```
+~~~
 
 ## Step 5: Link your namespaces
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 skupper token create ~/west.token
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 skupper link create ~/west.token
 skupper link status --wait 30
-```
+~~~
 
 ## Step 6: Deploy your services
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
-```
+~~~
 
 ## Step 7: Expose your services
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
-```
+~~~
 
-<div class='console-label'>Console for east</div>
+Console for east:
 
-```shell
+~~~ shell
 skupper expose deployment/hello-world-backend --port 8080
-```
+~~~
 
 ## Step 8: Test your application
 
-<div class='console-label'>Console for west</div>
+Console for west:
 
-```shell
+~~~ shell
 curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')
-```
-
-    <style>
-      div.console-label {
-        margin-bottom: 0;
-        font-size: 0.7em;
-        text-transform: uppercase;
-        padding: 0.2em 0.6em 0 0.6em;
-        border-bottom: 0.1em solid gray;
-      }
-    </style>
-    
+~~~
