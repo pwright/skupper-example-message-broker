@@ -25,8 +25,8 @@ prerequisites: |-
   * The `skupper` command-line tool, the latest version ([installation
     guide][install-skupper])
 
-  * Two Kubernetes namespaces, from any providers you choose, on any
-    clusters you choose
+  * Access to two Kubernetes namespaces, from any providers you
+    choose, on any clusters you choose
 
   [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
   [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
@@ -51,7 +51,7 @@ steps:
         - run: export KUBECONFIG=~/.kube/config-east
   - title: Log in to your clusters
     preamble: |-
-      **Specific to your cloud provider**
+      *Specific to your cloud provider*
   - title: Create your namespaces
     commands:
       west:

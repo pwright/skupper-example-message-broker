@@ -92,7 +92,7 @@ def generate_readme(skewer_data):
         if "commands" in step_data:
             for context_name, commands in step_data["commands"].items():
                 out.append("")
-                out.append(f"Console session `{context_name}`:")
+                out.append(f"<div class='console-label'>Console for {context_name}</div>")
                 out.append("")
                 out.append("```shell")
 
@@ -104,5 +104,17 @@ def generate_readme(skewer_data):
         if "postamble" in step_data:
             out.append("")
             out.append(skewer_data["postamble"])
+
+    out.append("""
+    <style>
+      div.console-label {
+        margin-bottom: 0;
+        font-size: 0.7em;
+        text-transform: uppercase;
+        padding: 0.2em 0.6em 0 0.6em;
+        border-bottom: 0.1em solid gray;
+      }
+    </style>
+    """)
 
     write("README.md", "\n".join(out))
