@@ -86,15 +86,27 @@ def generate_readme(skewer_data):
     for i, step_data in enumerate(skewer_data["steps"], 1):
         out.append("")
         out.append(f"## Step {i}: {step_data['title']}")
-        # out.append(skewer_data["prerequisites"])
 
-        for session_data in step_data["sessions"]:
-            pass
-            # kubeconfig_name = session_data["kubeconfig"]
-            # kubeconfig_file = kubeconfigs[kubeconfig_name]
+        if "preamble" in step_data:
+            out.append("")
+            out.append(step_data["preamble"])
 
-            # with working_env(KUBECONFIG=kubeconfig_file):
-            #     for command_data in session_data["commands"]:
-            #         # run(command_data["run"].replace("~", work_dir), shell=True)
+        for session_name, session_data in step_data["commands"].items():
+            pprint(session_data)
+
+            out.append("")
+            out.append(f"Console session `{session_name}`:")
+            out.append("")
+            out.append("```shell")
+
+            for command_data in session_data:
+                pprint(command_data)
+                out.append(command_data["run"])
+
+            out.append("```")
+
+        if "postamble" in step_data:
+            out.append("")
+            out.append(skewer_data["postamble"])
 
     write("README.md", "\n".join(out))

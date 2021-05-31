@@ -36,12 +36,87 @@ services without exposing the backend to the public internet.
 [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
 
-## Step 1: Set up your namespaces
+## Step 1: Configure separate kubeconfigs
 
-## Step 2: Link your namespaces
+Since we are dealing with two namespaces, we need to set up
+isolated `kubectl` configurations, one for each namespace.  In
+this example, we will use distinct kubeconfigs on separate
+consoles.
 
-## Step 3: Deploy your services
+Console session `west`:
 
-## Step 4: Expose your services
+```shell
+export KUBECONFIG=~/.kube/config-west
+```
 
-## Step 5: Test your application
+Console session `east`:
+
+```shell
+export KUBECONFIG=~/.kube/config-east
+```
+
+## Step 2: Install Skupper in your namespaces
+
+Console session `west`:
+
+```shell
+skupper init
+```
+
+Console session `east`:
+
+```shell
+skupper init --ingress none
+```
+
+## Step 3: Link your namespaces
+
+Console session `west`:
+
+```shell
+skupper token create ~/west.token
+```
+
+Console session `east`:
+
+```shell
+skupper init --ingress none
+skupper link create ~/west.token
+skupper link status
+```
+
+## Step 4: Deploy your services
+
+Console session `west`:
+
+```shell
+kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
+```
+
+Console session `east`:
+
+```shell
+kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
+```
+
+## Step 5: Expose your services
+
+Console session `west`:
+
+```shell
+kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
+```
+
+Console session `east`:
+
+```shell
+skupper expose deployment/hello-world-backend --port 8080
+```
+
+## Step 6: Test your application
+
+Console session `west`:
+
+```shell
+curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')
+```

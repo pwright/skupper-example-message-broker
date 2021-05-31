@@ -30,63 +30,60 @@ prerequisites: |-
 
   [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
   [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
-kubeconfigs:
+sessions:
   west:
-    file: ~/.kube/config-west
+    kubeconfig: ~/.kube/config-west
     namespace: west
   east:
-    file: ~/.kube/config-east
+    kubeconfig: ~/.kube/config-east
     namespace: east
 steps:
-  - name: setup-namespaces
-    title: Set up your namespaces
-    sessions:
-      - kubeconfig: west
-        commands:
-          - run: skupper init
-            await: [deployment/skupper-service-controller, deployment/skupper-router]
-      - kubeconfig: east
-        commands:
-          - run: skupper init --ingress none
-            await: [deployment/skupper-service-controller, deployment/skupper-router]
-  - name: link-namespaces
-    title: Link your namespaces
-    sessions:
-      - kubeconfig: west
-        commands:
-          - run: skupper token create ~/west.token
-      - kubeconfig: east
-        commands:
-          - run: skupper init --ingress none
-            await: [deployment/skupper-service-controller, deployment/skupper-router]
-          - run: skupper link create ~/west.token
-            sleep: 10
-          - run: skupper link status
-  - name: deploy-services
-    title: Deploy your services
-    sessions:
-      - kubeconfig: west
-        commands:
-          - run: kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
-            await: [deployment/hello-world-frontend]
-      - kubeconfig: east
-        commands:
-          - run: kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
-            await: [deployment/hello-world-backend]
-  - name: expose-services
-    title: Expose your services
-    sessions:
-      - kubeconfig: west
-        commands:
-          - run: kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
-            sleep: 10
-      - kubeconfig: east
-        commands:
-          - run: skupper expose deployment/hello-world-backend --port 8080
-            sleep: 10
-  - name: test
-    title: Test your application
-    sessions:
-      - kubeconfig: west
-        commands:
-          - run: "curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')"
+  - title: Configure separate kubeconfigs
+    preamble: |-
+      Since we are dealing with two namespaces, we need to set up
+      isolated `kubectl` configurations, one for each namespace.  In
+      this example, we will use distinct kubeconfigs on separate
+      consoles.
+    commands:
+      west:
+        - run: export KUBECONFIG=~/.kube/config-west
+      east:
+        - run: export KUBECONFIG=~/.kube/config-east
+  - title: Install Skupper in your namespaces
+    commands:
+      west:
+        - run: skupper init
+          await: [deployment/skupper-service-controller, deployment/skupper-router]
+      east:
+        - run: skupper init --ingress none
+          await: [deployment/skupper-service-controller, deployment/skupper-router]
+  - title: Link your namespaces
+    commands:
+      west:
+        - run: skupper token create ~/west.token
+      east:
+        - run: skupper init --ingress none
+          await: [deployment/skupper-service-controller, deployment/skupper-router]
+        - run: skupper link create ~/west.token
+          sleep: 10
+        - run: skupper link status
+  - title: Deploy your services
+    commands:
+      west:
+        - run: kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
+          await: [deployment/hello-world-frontend]
+      east:
+        - run: kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
+          await: [deployment/hello-world-backend]
+  - title: Expose your services
+    commands:
+      west:
+        - run: kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
+          sleep: 10
+      east:
+        - run: skupper expose deployment/hello-world-backend --port 8080
+          sleep: 10
+  - title: Test your application
+    commands:
+      west:
+        - run: "curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')"
