@@ -49,6 +49,17 @@ steps:
         - run: export KUBECONFIG=~/.kube/config-west
       east:
         - run: export KUBECONFIG=~/.kube/config-east
+  - title: Log in to your clusters
+    preamble: |-
+      **Specific to your cloud provider**
+  - title: Create your namespaces
+    commands:
+      west:
+        - run: kubectl create namespace west
+        - run: kubectl config set-context --current west
+      east:
+        - run: kubectl create namespace east
+        - run: kubectl config set-context --current east
   - title: Install Skupper in your namespaces
     commands:
       west:
@@ -62,11 +73,8 @@ steps:
       west:
         - run: skupper token create ~/west.token
       east:
-        - run: skupper init --ingress none
-          await: [deployment/skupper-service-controller, deployment/skupper-router]
         - run: skupper link create ~/west.token
-          sleep: 10
-        - run: skupper link status
+        - run: skupper link status --wait 30
   - title: Deploy your services
     commands:
       west:

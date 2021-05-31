@@ -55,7 +55,27 @@ Console session `east`:
 export KUBECONFIG=~/.kube/config-east
 ```
 
-## Step 2: Install Skupper in your namespaces
+## Step 2: Log in to your clusters
+
+**Specific to your cloud provider**
+
+## Step 3: Create your namespaces
+
+Console session `west`:
+
+```shell
+kubectl create namespace west
+kubectl config set-context --current west
+```
+
+Console session `east`:
+
+```shell
+kubectl create namespace east
+kubectl config set-context --current east
+```
+
+## Step 4: Install Skupper in your namespaces
 
 Console session `west`:
 
@@ -69,7 +89,7 @@ Console session `east`:
 skupper init --ingress none
 ```
 
-## Step 3: Link your namespaces
+## Step 5: Link your namespaces
 
 Console session `west`:
 
@@ -80,12 +100,11 @@ skupper token create ~/west.token
 Console session `east`:
 
 ```shell
-skupper init --ingress none
 skupper link create ~/west.token
-skupper link status
+skupper link status --wait 30
 ```
 
-## Step 4: Deploy your services
+## Step 6: Deploy your services
 
 Console session `west`:
 
@@ -99,7 +118,7 @@ Console session `east`:
 kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
 ```
 
-## Step 5: Expose your services
+## Step 7: Expose your services
 
 Console session `west`:
 
@@ -113,7 +132,7 @@ Console session `east`:
 skupper expose deployment/hello-world-backend --port 8080
 ```
 
-## Step 6: Test your application
+## Step 8: Test your application
 
 Console session `west`:
 
