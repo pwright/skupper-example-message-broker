@@ -30,7 +30,7 @@ prerequisites: |-
 
   [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
   [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
-sessions:
+contexts:
   west:
     kubeconfig: ~/.kube/config-west
     namespace: west
@@ -56,10 +56,10 @@ steps:
     commands:
       west:
         - run: kubectl create namespace west
-        - run: kubectl config set-context --current west
+        - run: kubectl config set-context --current --namespace west
       east:
         - run: kubectl create namespace east
-        - run: kubectl config set-context --current east
+        - run: kubectl config set-context --current --namespace east
   - title: Install Skupper in your namespaces
     commands:
       west:

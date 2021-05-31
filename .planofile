@@ -25,44 +25,42 @@ def test(app):
                 run(f"minikube profile {minikube_profile}")
 
                 with start("minikube tunnel", output=tunnel_output_file):
-                    kubeconfigs = setup_kubeconfigs(work_dir, skewer_data)
-                    run_steps(work_dir, skewer_data, kubeconfigs)
+                    contexts = setup_contexts(work_dir, skewer_data)
+                    run_steps(work_dir, skewer_data, contexts)
             finally:
                 run(f"minikube delete -p {minikube_profile}")
 
-def setup_kubeconfigs(work_dir, skewer_data):
-    kubeconfigs = dict()
+def setup_contexts(work_dir, skewer_data):
+    contexts = skewer_data["contexts"]
 
-    for name, value in skewer_data["kubeconfigs"].items():
-        kubeconfig_file = value["file"].replace("~", work_dir)
-        namespace = value["namespace"]
+    for name, value in contexts.items():
+        kubeconfig = value["kubeconfig"].replace("~", work_dir)
 
-        with working_env(KUBECONFIG=kubeconfig_file):
+        with working_env(KUBECONFIG=kubeconfig):
             run(f"minikube update-context")
-            run(f"kubectl create namespace {namespace}")
-            run(f"kubectl config set-context --current --namespace {namespace}")
+            check_file(ENV["KUBECONFIG"])
 
-        kubeconfigs[name] = kubeconfig_file
+    return contexts
 
-    return kubeconfigs
-
-def run_steps(work_dir, skewer_data, kubeconfigs):
+def run_steps(work_dir, skewer_data, contexts):
     for step_data in skewer_data["steps"]:
-        for session_data in step_data["sessions"]:
-            kubeconfig_name = session_data["kubeconfig"]
-            kubeconfig_file = kubeconfigs[kubeconfig_name]
+        if "commands" not in step_data:
+            continue
 
-            with working_env(KUBECONFIG=kubeconfig_file):
-                for command_data in session_data["commands"]:
-                    run(command_data["run"].replace("~", work_dir), shell=True)
+        for context_name, commands in step_data["commands"].items():
+            kubeconfig = contexts[context_name]["kubeconfig"].replace("~", work_dir)
 
-                    if "await" in command_data:
-                        for resource in command_data["await"]:
+            with working_env(KUBECONFIG=kubeconfig):
+                for command in commands:
+                    run(command["run"].replace("~", work_dir), shell=True)
+
+                    if "await" in command:
+                        for resource in command["await"]:
                             group, name = resource.split("/", 1)
                             await_resource(group, name)
 
-                    if "sleep" in command_data:
-                        sleep(command_data["sleep"])
+                    if "sleep" in command:
+                        sleep(command["sleep"])
 
 def generate_readme(skewer_data):
     out = list()
@@ -92,17 +90,14 @@ def generate_readme(skewer_data):
             out.append(step_data["preamble"])
 
         if "commands" in step_data:
-            for session_name, session_data in step_data["commands"].items():
-                pprint(session_data)
-
+            for context_name, commands in step_data["commands"].items():
                 out.append("")
-                out.append(f"Console session `{session_name}`:")
+                out.append(f"Console session `{context_name}`:")
                 out.append("")
                 out.append("```shell")
 
-                for command_data in session_data:
-                    pprint(command_data)
-                    out.append(command_data["run"])
+                for command in commands:
+                    out.append(command["run"])
 
                 out.append("```")
 

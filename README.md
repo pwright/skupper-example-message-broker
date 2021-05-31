@@ -65,14 +65,14 @@ Console session `west`:
 
 ```shell
 kubectl create namespace west
-kubectl config set-context --current west
+kubectl config set-context --current --namespace west
 ```
 
 Console session `east`:
 
 ```shell
 kubectl create namespace east
-kubectl config set-context --current east
+kubectl config set-context --current --namespace east
 ```
 
 ## Step 4: Install Skupper in your namespaces
