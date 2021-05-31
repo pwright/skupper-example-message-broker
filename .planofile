@@ -1,6 +1,16 @@
 from skewer import *
 
 @command
+def generate(app):
+    import yaml
+
+    with open("skewer.yaml") as skewer_file:
+        skewer_data = yaml.safe_load(skewer_file)
+        generate_readme(skewer_data)
+
+    print(read("README.md"))
+
+@command
 def test(app):
     import yaml
 
@@ -37,8 +47,8 @@ def setup_kubeconfigs(work_dir, skewer_data):
     return kubeconfigs
 
 def run_steps(work_dir, skewer_data, kubeconfigs):
-    for phase_data in skewer_data["steps"]:
-        for session_data in phase_data["sessions"]:
+    for step_data in skewer_data["steps"]:
+        for session_data in step_data["sessions"]:
             kubeconfig_name = session_data["kubeconfig"]
             kubeconfig_file = kubeconfigs[kubeconfig_name]
 
@@ -53,3 +63,38 @@ def run_steps(work_dir, skewer_data, kubeconfigs):
 
                     if "sleep" in command_data:
                         sleep(command_data["sleep"])
+
+def generate_readme(skewer_data):
+    out = list()
+
+    out.append(f"# {skewer_data['title']}")
+    out.append("")
+    out.append(skewer_data["subtitle"])
+
+    # TOC
+
+    out.append("")
+    out.append("## Overview")
+    out.append("")
+    out.append(skewer_data["overview"])
+
+    out.append("")
+    out.append("## Prerequisites")
+    out.append("")
+    out.append(skewer_data["prerequisites"])
+
+    for i, step_data in enumerate(skewer_data["steps"], 1):
+        out.append("")
+        out.append(f"## Step {i}: {step_data['title']}")
+        # out.append(skewer_data["prerequisites"])
+
+        for session_data in step_data["sessions"]:
+            pass
+            # kubeconfig_name = session_data["kubeconfig"]
+            # kubeconfig_file = kubeconfigs[kubeconfig_name]
+
+            # with working_env(KUBECONFIG=kubeconfig_file):
+            #     for command_data in session_data["commands"]:
+            #         # run(command_data["run"].replace("~", work_dir), shell=True)
+
+    write("README.md", "\n".join(out))
