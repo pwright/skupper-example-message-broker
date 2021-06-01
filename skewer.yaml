@@ -1,5 +1,7 @@
 title: Accessing a message broker using Skupper
-subtitle: Use [Skupper](https://skupper.io/) to consume from a job queue in a private datacenter
+subtitle: |-
+  Use [Skupper](https://skupper.io/) to consume from a job queue in a
+  private datacenter and process the jobs in the public cloud
 overview: |-
   This example is a multi-service messaging application that can
   be deployed across multiple Kubernetes clusters using Skupper.
@@ -10,7 +12,7 @@ overview: |-
 
   * A job processor running in the public cloud
 
-  * A job requstor, running in the private data center, that serves a
+  * A job requestor, running in the private data center, that serves a
     REST API for submitting jobs
 prerequisites: |-
   * The `kubectl` command-line tool, version 1.15 or later

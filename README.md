@@ -1,6 +1,7 @@
 # Accessing a message broker using Skupper
 
-Use [Skupper](https://skupper.io/) to consume from a job queue in a private datacenter
+Use [Skupper](https://skupper.io/) to consume from a job queue in a
+private datacenter and process the jobs in the public cloud
 
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
@@ -24,7 +25,7 @@ It contains three services:
 
 * A job processor running in the public cloud
 
-* A job requstor, running in the private data center, that serves a
+* A job requestor, running in the private data center, that serves a
   REST API for submitting jobs
 
 ## Prerequisites
