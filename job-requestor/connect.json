@@ -1,0 +1,4 @@
+{
+    "scheme": "amqp",
+    "host": "message-broker"
+}

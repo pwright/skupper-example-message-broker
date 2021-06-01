@@ -1,6 +1,6 @@
-# Skupper Hello World
+# Accessing a message broker using Skupper
 
-A minimal HTTP application deployed across Kubernetes clusters using [Skupper](https://skupper.io/)
+Use [Skupper](https://skupper.io/) to consume from a job queue in a private datacenter
 
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
@@ -15,23 +15,17 @@ A minimal HTTP application deployed across Kubernetes clusters using [Skupper](h
 
 ## Overview
 
-This example is a very simple multi-service HTTP application that can
+This example is a multi-service messaging application that can
 be deployed across multiple Kubernetes clusters using Skupper.
 
-It contains two services:
+It contains three services:
 
-* A backend service that exposes an `/api/hello` endpoint.  It
-  returns greetings of the form `Hello from <pod-name>
-  (<request-count>)`.
+* A message broker running in a private data center
 
-* A frontend service that accepts HTTP requests, calls the backend
-  to fetch new greetings, and serves them to the user.
+* A job processor running in the public cloud
 
-With Skupper, you can place the backend in one cluster and the
-frontend in another and maintain connectivity between the two
-services without exposing the backend to the public internet.
-
-<img src="images/entities.svg" width="640"/>
+* A job requstor, running in the private data center, that serves a
+  REST API for submitting jobs
 
 ## Prerequisites
 
@@ -54,16 +48,16 @@ isolated `kubectl` configurations, one for each namespace.  In
 this example, we will use distinct kubeconfigs on separate
 consoles.
 
-Console for west:
+Console for cloud:
 
 ~~~ shell
-export KUBECONFIG=~/.kube/config-west
+export KUBECONFIG=~/.kube/config-cloud
 ~~~
 
-Console for east:
+Console for datacenter:
 
 ~~~ shell
-export KUBECONFIG=~/.kube/config-east
+export KUBECONFIG=~/.kube/config-datacenter
 ~~~
 
 ## Step 2: Log in to your clusters
@@ -72,29 +66,29 @@ export KUBECONFIG=~/.kube/config-east
 
 ## Step 3: Create your namespaces
 
-Console for west:
+Console for cloud:
 
 ~~~ shell
-kubectl create namespace west
-kubectl config set-context --current --namespace west
+kubectl create namespace cloud
+kubectl config set-context --current --namespace cloud
 ~~~
 
-Console for east:
+Console for datacenter:
 
 ~~~ shell
-kubectl create namespace east
-kubectl config set-context --current --namespace east
+kubectl create namespace datacenter
+kubectl config set-context --current --namespace datacenter
 ~~~
 
 ## Step 4: Install Skupper in your namespaces
 
-Console for west:
+Console for cloud:
 
 ~~~ shell
 skupper init
 ~~~
 
-Console for east:
+Console for datacenter:
 
 ~~~ shell
 skupper init --ingress none
@@ -102,51 +96,47 @@ skupper init --ingress none
 
 ## Step 5: Link your namespaces
 
-Console for west:
+Console for cloud:
 
 ~~~ shell
-skupper token create ~/west.token
+skupper token create ~/cloud.token
 ~~~
 
-Console for east:
+Console for datacenter:
 
 ~~~ shell
-skupper link create ~/west.token
+skupper link create ~/cloud.token
 skupper link status --wait 30
 ~~~
 
 ## Step 6: Deploy your services
 
-Console for west:
+Console for cloud:
 
 ~~~ shell
-kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
+kubectl create deployment job-processor --image quay.io/skupper/job-processor
 ~~~
 
-Console for east:
+Console for datacenter:
 
 ~~~ shell
-kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
+kubectl apply -f message-broker.yaml
+kubectl create deployment job-requestor --image quay.io/skupper/job-requestor
 ~~~
 
 ## Step 7: Expose your services
 
-Console for west:
+Console for datacenter:
 
 ~~~ shell
-kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
-~~~
-
-Console for east:
-
-~~~ shell
-skupper expose deployment/hello-world-backend --port 8080
+skupper expose deployment/message-broker --port 5672
+kubectl expose deployment/job-requestor --port 8080 --type LoadBalancer
 ~~~
 
 ## Step 8: Test your application
 
-Console for west:
+Console for datacenter:
 
 ~~~ shell
-curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')
+curl -X POST $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/send-request')
 ~~~

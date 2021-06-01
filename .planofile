@@ -8,3 +8,27 @@ def generate(app):
 def test(app):
     generate_readme("skewer.yaml", make_temp_file())
     run_example_steps("skewer.yaml")
+
+@command
+def build_images(app):
+    run("podman build -t quay.io/skupper/job-processor job-processor")
+    run("podman build -t quay.io/skupper/job-requestor job-requestor")
+
+@command
+def run_images(app):
+    build_images(app)
+
+    with start("podman run -it --net host quay.io/skupper/job-requestor") as requestor:
+        while True:
+            sleep(1)
+
+    # with start("podman run -it --net host -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
+    #     with  start("podman run -it --net host quay.io/skupper/job-processor") as processor:
+    #         with start("podman run -it --net host quay.io/skupper/job-requestor") as requestor:
+    #             while True:
+    #                 sleep(1)
+
+@command
+def push_images(app):
+    run("podman push quay.io/skupper/job-processor")
+    run("podman push quay.io/skupper/job-requestor")

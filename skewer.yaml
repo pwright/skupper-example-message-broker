@@ -1,23 +1,17 @@
-title: Skupper Hello World
-subtitle: A minimal HTTP application deployed across Kubernetes clusters using [Skupper](https://skupper.io/)
+title: Accessing a message broker using Skupper
+subtitle: Use [Skupper](https://skupper.io/) to consume from a job queue in a private datacenter
 overview: |-
-  This example is a very simple multi-service HTTP application that can
+  This example is a multi-service messaging application that can
   be deployed across multiple Kubernetes clusters using Skupper.
 
-  It contains two services:
+  It contains three services:
 
-  * A backend service that exposes an `/api/hello` endpoint.  It
-    returns greetings of the form `Hello from <pod-name>
-    (<request-count>)`.
+  * A message broker running in a private data center
 
-  * A frontend service that accepts HTTP requests, calls the backend
-    to fetch new greetings, and serves them to the user.
+  * A job processor running in the public cloud
 
-  With Skupper, you can place the backend in one cluster and the
-  frontend in another and maintain connectivity between the two
-  services without exposing the backend to the public internet.
-
-  <img src="images/entities.svg" width="640"/>
+  * A job requstor, running in the private data center, that serves a
+    REST API for submitting jobs
 prerequisites: |-
   * The `kubectl` command-line tool, version 1.15 or later
     ([installation guide][install-kubectl])
@@ -31,12 +25,12 @@ prerequisites: |-
   [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
   [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
 contexts:
-  west:
-    kubeconfig: ~/.kube/config-west
-    namespace: west
-  east:
-    kubeconfig: ~/.kube/config-east
-    namespace: east
+  datacenter:
+    kubeconfig: ~/.kube/config-datacenter
+    namespace: datacenter
+  cloud:
+    kubeconfig: ~/.kube/config-cloud
+    namespace: cloud
 steps:
   - title: Configure separate kubeconfigs
     preamble: |-
@@ -45,53 +39,55 @@ steps:
       this example, we will use distinct kubeconfigs on separate
       consoles.
     commands:
-      west:
-        - run: export KUBECONFIG=~/.kube/config-west
-      east:
-        - run: export KUBECONFIG=~/.kube/config-east
+      cloud:
+        - run: export KUBECONFIG=~/.kube/config-cloud
+      datacenter:
+        - run: export KUBECONFIG=~/.kube/config-datacenter
   - title: Log in to your clusters
     preamble: |-
       *Specific to your cloud provider*
   - title: Create your namespaces
     commands:
-      west:
-        - run: kubectl create namespace west
-        - run: kubectl config set-context --current --namespace west
-      east:
-        - run: kubectl create namespace east
-        - run: kubectl config set-context --current --namespace east
+      cloud:
+        - run: kubectl create namespace cloud
+        - run: kubectl config set-context --current --namespace cloud
+      datacenter:
+        - run: kubectl create namespace datacenter
+        - run: kubectl config set-context --current --namespace datacenter
   - title: Install Skupper in your namespaces
     commands:
-      west:
+      cloud:
         - run: skupper init
           await: [deployment/skupper-service-controller, deployment/skupper-router]
-      east:
+      datacenter:
         - run: skupper init --ingress none
           await: [deployment/skupper-service-controller, deployment/skupper-router]
   - title: Link your namespaces
     commands:
-      west:
-        - run: skupper token create ~/west.token
-      east:
-        - run: skupper link create ~/west.token
+      cloud:
+        - run: skupper token create ~/cloud.token
+      datacenter:
+        - run: skupper link create ~/cloud.token
         - run: skupper link status --wait 30
   - title: Deploy your services
     commands:
-      west:
-        - run: kubectl create deployment hello-world-frontend --image quay.io/skupper/hello-world-frontend
-          await: [deployment/hello-world-frontend]
-      east:
-        - run: kubectl create deployment hello-world-backend --image quay.io/skupper/hello-world-backend
-          await: [deployment/hello-world-backend]
+      cloud:
+        - run: kubectl create deployment job-processor --image quay.io/skupper/job-processor
+          await: [deployment/job-processor]
+      datacenter:
+        - run: kubectl apply -f message-broker.yaml
+          await: [deployment/message-broker]
+        - run: kubectl create deployment job-requestor --image quay.io/skupper/job-requestor
+          await: [deployment/job-requestor]
   - title: Expose your services
     commands:
-      west:
-        - run: kubectl expose deployment/hello-world-frontend --port 8080 --type LoadBalancer
+      datacenter:
+        - run: skupper expose deployment/message-broker --port 5672
           sleep: 10
-      east:
-        - run: skupper expose deployment/hello-world-backend --port 8080
+        - run: kubectl expose deployment/job-requestor --port 8080 --type LoadBalancer
           sleep: 10
   - title: Test your application
     commands:
-      west:
-        - run: "curl $(kubectl get service hello-world-frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/')"
+      datacenter:
+        - run: "curl -X POST $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/send-request')"
+          sleep: 1800
