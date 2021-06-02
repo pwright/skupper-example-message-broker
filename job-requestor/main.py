@@ -11,8 +11,6 @@ results = list()
 def receive_result(message):
     results.append(message.body)
 
-Thread(target=moon.run, daemon=True).start()
-
 flask = Flask("job-requestor")
 
 @flask.errorhandler(Exception)
@@ -28,6 +26,8 @@ def send_job():
 @flask.route("/get-result")
 def get_result():
     return ", ".join(results)
+
+Thread(target=moon.run, daemon=True).start()
 
 try:
     flask.run(host="0.0.0.0", port=8080)

@@ -16,6 +16,7 @@ def receive_job(message):
 
 @moon.sender("worker-status-updates", period=1.0)
 def send_status_update(sender):
+    print("Sending an update")
     sender.send(Message("An update!"))
 
 moon.run()

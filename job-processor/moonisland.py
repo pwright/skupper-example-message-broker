@@ -77,9 +77,15 @@ class SenderQueue:
 class Message(_proton.Message):
     pass
 
-# class _TimerHandler(_proton_handlers.Handler):
-#     def on_timer_task(self, event):
-#         pass
+class _TimerHandler(_proton_reactor.Handler):
+    def __init__(self, sender):
+        super().__init__()
+        self._sender = sender
+
+    def on_timer_task(self, event):
+        self._sender(self._sender._pn_sender)
+
+        event.container.schedule(self._sender._period, self)
 
 class _Handler(_proton_handlers.MessagingHandler):
     def __init__(self, app):
@@ -98,8 +104,9 @@ class _Handler(_proton_handlers.MessagingHandler):
         for mi_sender in self._app._senders:
             pn_sender = event.container.create_sender(conn, mi_sender._address)
             pn_sender.mi_sender = mi_sender
+            mi_sender._pn_sender = pn_sender
 
-            # event.container.schedule(1, xxx)
+            event.container.schedule(mi_sender._period, _TimerHandler(mi_sender))
 
         for mi_receiver in self._app._receivers:
             pn_receiver = event.container.create_receiver(conn, mi_receiver._address)
