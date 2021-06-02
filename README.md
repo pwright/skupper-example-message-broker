@@ -22,15 +22,14 @@ be deployed across multiple Kubernetes clusters using Skupper.
 It contains three services:
 
 * A message broker running in a private data center.  The broker has
-  a queue named "jobs" and a topic named "notifications".
+  a queue named "jobs" and a queue named "results".
 
 * A job requestor running in the private data center.  It serves a
-  REST API for submitting jobs to the job queue and getting results
-  from the notifications topic.
+  REST API for submitting jobs and getting the results.
 
-* A job processor running in the public cloud.  It consumes from the
-  job queue, does some work, and publishes the result to the
-  notifications topic.
+* A job processor running in the public cloud.  It receives from the
+  job queue, does some work, and sends the result to the result
+  queue.
 
 ## Prerequisites
 
