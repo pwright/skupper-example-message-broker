@@ -116,14 +116,13 @@ kubectl config set-context --current --namespace datacenter
 ## Step 4: Install Skupper in your namespaces
 
 The `skupper init` command installs the Skupper router and
-service controller in the current namespace.
-
-**Note:** If you are using Minikube, [you need to start
-`minikube tunnel`][minikube-tunnel] before you install Skupper.
+service controller in the current namespace.  Run the `skupper
+init` command in each namespace.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
 
-Run the `skupper init` command in each namespace.
+**Note:** If you are using Minikube, [you need to start
+`minikube tunnel`][minikube-tunnel] before you install Skupper.
 
 Console for cloud:
 
