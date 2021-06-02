@@ -1,10 +1,9 @@
 FROM registry.fedoraproject.org/fedora-minimal
 
-RUN microdnf install python3 python3-qpid-proton && microdnf clean all
+RUN microdnf install python3 python3-qpid-proton python3-flask && microdnf clean all
 
-ADD moonisland.py /app/python/moonisland.py
 ADD connect.json /etc/messaging/connect.json
 ADD main.py /app/main.py
+ADD moonisland.py /app/moonisland.py
 
-ENV PYTHONPATH /app/python
 ENTRYPOINT ["python3", "/app/main.py"]

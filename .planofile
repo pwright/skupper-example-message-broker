@@ -16,8 +16,8 @@ def test(app):
 
 @command
 def build_images(app):
-    run("podman build -t quay.io/skupper/job-processor job-processor")
-    run("podman build -t quay.io/skupper/job-requestor job-requestor")
+    run("podman build -t quay.io/skupper/job-processor processor")
+    run("podman build -t quay.io/skupper/job-requestor requestor")
 
 @command
 def push_images(app):
@@ -26,17 +26,15 @@ def push_images(app):
 
 @command
 def test_services(app):
-    connect_file = write(make_temp_file(), '{"scheme": "amqp", "host": "localhost"}')
+    connect_file = write(make_temp_file(), '{"scheme": "amqp", "host": "localhost", "port": 45672}')
 
     with working_env(MESSAGING_CONNECT_FILE=connect_file):
-      with start("podman run -it -p 5672:5672 -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
-          sleep(5)
+        with start("podman run -it -p 45672:5672 -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
+            sleep(5)
 
-          with start("python3 job-processor/main.py"), start("python3 job-requestor/main.py"):
-              sleep(1)
+            with start("python3 processor/main.py"), start("python3 requestor/main.py"):
+                sleep(1)
 
-              run("curl -X POST -H 'Content-Type: application/json' -d '{\"text\":\"abc123\"}' http://localhost:8080/submit-job")
+                run("curl -i http://0.0.0.0:8080/submit-job -d text=abc123")
 
-              sleep(1)
-
-              run("curl http://localhost:8080/get-result")
+                sleep(2)

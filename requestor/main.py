@@ -2,14 +2,16 @@ from flask import Flask, Response, request
 from moonisland import MoonIsland, SenderQueue, Message
 from threading import Thread
 from time import sleep
+from uuid import uuid4
 
 moon = MoonIsland()
 jobs = SenderQueue(moon, "jobs")
-results = list()
+results = dict()
 
 @moon.receiver("results")
 def receive_result(message):
-    results.append(message.body)
+    results[str(message.correlation_id)] = message.body
+    print(f"REQUESTOR: Received result '{message.body}'")
 
 flask = Flask("job-requestor")
 
@@ -19,13 +21,30 @@ def error(e):
     return Response(f"Trouble! {e}\n", status=500, mimetype="text/plain")
 
 @flask.route("/submit-job", methods=["POST"])
-def send_job():
-    jobs.send(Message(request.json["text"]))
-    return {"status": "OK"}
+def submit_job():
+    text = request.form["text"]
+
+    message = Message(text)
+    message.id = uuid4()
+    message.reply_to = "results"
+
+    jobs.send(message)
+
+    print(f"REQUESTOR: Submitted job '{text}'")
+
+    return \
+        f"Job ID: {message.id}\n" \
+        f"Text: {text}\n" \
+        f"Status: OK\n"
 
 @flask.route("/get-result")
 def get_result():
-    return ", ".join(results)
+    job_id = request.args["job"]
+
+    try:
+        return results[job_id]
+    except KeyError:
+        return "[No result]"
 
 Thread(target=moon.run, daemon=True).start()
 

@@ -101,6 +101,8 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             mi_sender_queue._bind(pn_sender)
 
+            print(f"moonisland: Created queue sender for address '{mi_sender_queue._address}'")
+
         for mi_sender in self._app._senders:
             pn_sender = event.container.create_sender(conn, mi_sender._address)
             pn_sender.mi_sender = mi_sender
@@ -108,13 +110,19 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             event.container.schedule(mi_sender._period, _TimerHandler(mi_sender))
 
+            print(f"moonisland: Created periodic sender for address '{mi_sender._address}'")
+
         for mi_receiver in self._app._receivers:
             pn_receiver = event.container.create_receiver(conn, mi_receiver._address)
             pn_receiver.mi_receiver = mi_receiver
 
+            print(f"moonisland: Created receiver for address '{mi_receiver._address}'")
+
     def on_message(self, event):
         message = event.message
         pn_receiver = event.link
+
+        print(f"moonisland: Received message {message.id}")
 
         pn_receiver.mi_receiver(message)
 
@@ -122,10 +130,12 @@ class _Handler(_proton_handlers.MessagingHandler):
         pn_sender = event.subject
         mi_sender_queue = pn_sender.mi_sender_queue
 
-        while pn_sender.credit:
+        while True or pn_sender.credit:
             message = mi_sender_queue._get()
 
             if message is None:
                 break
 
             pn_sender.send(message)
+
+            print(f"moonisland: Sent message {message.id}")

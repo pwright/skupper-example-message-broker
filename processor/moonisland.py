@@ -9,6 +9,7 @@ class MoonIsland:
 
         self._receivers = list()
         self._senders = list()
+        self._sender_queues = list()
 
         self._events = _proton_reactor.EventInjector()
         self._container = _proton_reactor.Container(_Handler(self))
@@ -27,6 +28,20 @@ class MoonIsland:
 
         return _Receiver
 
+    def sender(app, address, period):
+        class _Sender:
+            def __init__(self, function):
+                self._function = function
+                self._address = address
+                self._period = period
+
+                app._senders.append(self)
+
+            def __call__(self, sender):
+                self._function(sender)
+
+        return _Sender
+
     def run(self):
         try:
             self._container.run()
@@ -42,7 +57,7 @@ class SenderQueue:
         self._items = _collections.deque()
         self._event = None
 
-        self._app._senders.append(self)
+        self._app._sender_queues.append(self)
 
     def _bind(self, sender):
         assert self._event is None
@@ -62,6 +77,16 @@ class SenderQueue:
 class Message(_proton.Message):
     pass
 
+class _TimerHandler(_proton_reactor.Handler):
+    def __init__(self, sender):
+        super().__init__()
+        self._sender = sender
+
+    def on_timer_task(self, event):
+        self._sender(self._sender._pn_sender)
+
+        event.container.schedule(self._sender._period, self)
+
 class _Handler(_proton_handlers.MessagingHandler):
     def __init__(self, app):
         super().__init__()
@@ -70,30 +95,47 @@ class _Handler(_proton_handlers.MessagingHandler):
     def on_start(self, event):
         conn = event.container.connect()
 
+        for mi_sender_queue in self._app._sender_queues:
+            pn_sender = event.container.create_sender(conn, mi_sender_queue._address)
+            pn_sender.mi_sender_queue = mi_sender_queue
+
+            mi_sender_queue._bind(pn_sender)
+
+            print(f"moonisland: Created queue sender for address '{mi_sender_queue._address}'")
+
         for mi_sender in self._app._senders:
             pn_sender = event.container.create_sender(conn, mi_sender._address)
             pn_sender.mi_sender = mi_sender
+            mi_sender._pn_sender = pn_sender
 
-            mi_sender._bind(pn_sender)
+            event.container.schedule(mi_sender._period, _TimerHandler(mi_sender))
+
+            print(f"moonisland: Created periodic sender for address '{mi_sender._address}'")
 
         for mi_receiver in self._app._receivers:
             pn_receiver = event.container.create_receiver(conn, mi_receiver._address)
             pn_receiver.mi_receiver = mi_receiver
 
+            print(f"moonisland: Created receiver for address '{mi_receiver._address}'")
+
     def on_message(self, event):
         message = event.message
         pn_receiver = event.link
+
+        print(f"moonisland: Received message {message.id}")
 
         pn_receiver.mi_receiver(message)
 
     def on_queue_put(self, event):
         pn_sender = event.subject
-        mi_sender = pn_sender.mi_sender
+        mi_sender_queue = pn_sender.mi_sender_queue
 
-        while pn_sender.credit:
-            message = mi_sender._get()
+        while True or pn_sender.credit:
+            message = mi_sender_queue._get()
 
             if message is None:
                 break
 
             pn_sender.send(message)
+
+            print(f"moonisland: Sent message {message.id}")
