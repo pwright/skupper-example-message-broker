@@ -1,13 +1,13 @@
 # Accessing a message broker using Skupper
 
 Use [Skupper](https://skupper.io/) to consume from a job queue in a
-private datacenter and process the jobs in the public cloud
+private datacenter and process jobs in the public cloud
 
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
-* [Step 1: Configure separate kubeconfigs](#step-1-configure-separate-kubeconfigs)
+* [Step 1: Configure separate console sessions](#step-1-configure-separate-console-sessions)
 * [Step 2: Log in to your clusters](#step-2-log-in-to-your-clusters)
-* [Step 3: Create your namespaces](#step-3-create-your-namespaces)
+* [Step 3: Set the current namespaces](#step-3-set-the-current-namespaces)
 * [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
 * [Step 5: Link your namespaces](#step-5-link-your-namespaces)
 * [Step 6: Deploy your services](#step-6-deploy-your-services)
@@ -26,7 +26,7 @@ It contains three services:
 * A job processor running in the public cloud
 
 * A job requestor, running in the private data center, that serves a
-  REST API for submitting jobs
+  REST API for submitting jobs and getting job results
 
 ## Prerequisites
 
@@ -42,12 +42,26 @@ It contains three services:
 [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
 
-## Step 1: Configure separate kubeconfigs
+## Step 1: Configure separate console sessions
 
-Since we are dealing with two namespaces, we need to set up
-isolated `kubectl` configurations, one for each namespace.  In
-this example, we will use distinct kubeconfigs on separate
-consoles.
+Skupper is designed for use with multiple namespaces, typically on
+different clusters.  The `skupper` command uses your
+[kubeconfig][kubeconfig] and current context to select the namespace
+where it operates.
+
+[kubeconfig]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+
+Your kubeconfig is stored in a file in your home directory.  The
+`skupper` and `kubectl` commands use the `KUBECONFIG` environment
+variable to locate it.
+
+A single kubeconfig supports only one active context per user.
+Since you will be using multiple contexts at once in this
+exercise, you need to create distinct kubeconfigs.
+
+Start a console session for each of your namespaces.  Set the
+`KUBECONFIG` environment variable to a different path in each
+session.
 
 Console for cloud:
 
@@ -63,9 +77,23 @@ export KUBECONFIG=~/.kube/config-datacenter
 
 ## Step 2: Log in to your clusters
 
-*Specific to your cloud provider*
+The methods for logging in vary by Kubernetes provider.  Find
+the instructions for your chosen provider or providers and use
+them to authenticate and establish access for each console
+session.  See the following links for more information:
 
-## Step 3: Create your namespaces
+* [Minikube](https://skupper.io/start/openshift.html#logging-in)
+* [Amazon Elastic Kubernetes Service (EKS)](https://docs.aws.amazon.com/eks/latest/userguide/create-kubeconfig.html)
+* [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough#connect-to-the-cluster)
+* [Google Kubernetes Engine (GKE)](https://skupper.io/start/openshift.html#logging-in)
+* [IBM Kubernetes Service](https://skupper.io/start/openshift.html#logging-in)
+* [OpenShift](https://skupper.io/start/openshift.html#logging-in)
+
+## Step 3: Set the current namespaces
+
+Use `kubectl create namespace` to create the namespaces you wish
+to use.  Use `kubectl config set-context` to set the current
+namespace for each session.
 
 Console for cloud:
 
@@ -83,6 +111,16 @@ kubectl config set-context --current --namespace datacenter
 
 ## Step 4: Install Skupper in your namespaces
 
+The `skupper init` command installs the Skupper router in the current
+namespace.
+
+**Note:** If you are using Minikube, you need to [start
+`minikube tunnel`][minikube-tunnel] before you install Skupper.
+
+[minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
+
+Run the `skupper init` command in each namespace.
+
 Console for cloud:
 
 ~~~ shell
@@ -96,6 +134,20 @@ skupper init --ingress none
 ~~~
 
 ## Step 5: Link your namespaces
+
+Creating a link requires use of two `skupper` commands in
+conjunction, `skupper token create` and
+`skupper link create`.
+
+The `skupper token create` command generates a secret token that
+signifies permission to create a link.  The token also carries
+the link details.  The `skupper link create` command then uses
+the link token to create a link to the namespace that generated
+it.
+
+**Note:** The link token is truly a *secret*.  Anyone who has
+the token can link to your namespace.  Make sure that only those
+you trust have access to it.
 
 Console for cloud:
 
