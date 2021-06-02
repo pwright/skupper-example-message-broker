@@ -20,20 +20,23 @@ def build_images(app):
     run("podman build -t quay.io/skupper/job-requestor job-requestor")
 
 @command
-def run_images(app):
-    build_images(app)
-
-    with start("podman run -it --net host quay.io/skupper/job-requestor") as requestor:
-        while True:
-            sleep(1)
-
-    # with start("podman run -it --net host -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
-    #     with  start("podman run -it --net host quay.io/skupper/job-processor") as processor:
-    #         with start("podman run -it --net host quay.io/skupper/job-requestor") as requestor:
-    #             while True:
-    #                 sleep(1)
-
-@command
 def push_images(app):
     run("podman push quay.io/skupper/job-processor")
     run("podman push quay.io/skupper/job-requestor")
+
+@command
+def test_services(app):
+    connect_file = write(make_temp_file(), '{"scheme": "amqp", "host": "localhost"}')
+
+    with working_env(MESSAGING_CONNECT_FILE=connect_file):
+      with start("podman run -it -p 5672:5672 -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
+          sleep(5)
+
+          with start("python3 job-processor/main.py"), start("python3 job-requestor/main.py"):
+              sleep(1)
+
+              run("curl -X POST -H 'Content-Type: application/json' -d '{\"text\":\"abc123\"}' http://localhost:8080/submit-job")
+
+              sleep(1)
+
+              run("curl http://localhost:8080/get-result")

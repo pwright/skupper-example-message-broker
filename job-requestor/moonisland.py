@@ -1,13 +1,12 @@
-# import os
-# os.environ["PN_TRACE_FRM"] = "1"
-
 import collections as _collections
 import proton as _proton
 import proton.handlers as _proton_handlers
 import proton.reactor as _proton_reactor
 
 class MoonIsland:
-    def __init__(self):
+    def __init__(self, debug=False):
+        self._debug = debug
+
         self._receivers = list()
         self._senders = list()
 
