@@ -193,5 +193,5 @@ kubectl expose deployment/job-requestor --port 8080 --type LoadBalancer
 Console for datacenter:
 
 ~~~ shell
-curl -X POST $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/send-request')
+curl -d text=hello $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/submit-job')
 ~~~
