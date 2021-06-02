@@ -21,12 +21,16 @@ be deployed across multiple Kubernetes clusters using Skupper.
 
 It contains three services:
 
-* A message broker running in a private data center
+* A message broker running in a private data center.  The broker has
+  a queue named "jobs" and a topic named "notifications".
 
-* A job processor running in the public cloud
+* A job requestor running in the private data center.  It serves a
+  REST API for submitting jobs to the job queue and getting results
+  from the notifications topic.
 
-* A job requestor, running in the private data center, that serves a
-  REST API for submitting jobs and getting job results
+* A job processor running in the public cloud.  It consumes from the
+  job queue, does some work, and publishes the result to the
+  notifications topic.
 
 ## Prerequisites
 
@@ -82,18 +86,18 @@ the instructions for your chosen provider or providers and use
 them to authenticate and establish access for each console
 session.  See the following links for more information:
 
-* [Minikube](https://skupper.io/start/openshift.html#logging-in)
+* [Minikube](https://skupper.io/start/minikube.html#logging-in)
 * [Amazon Elastic Kubernetes Service (EKS)](https://docs.aws.amazon.com/eks/latest/userguide/create-kubeconfig.html)
 * [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough#connect-to-the-cluster)
-* [Google Kubernetes Engine (GKE)](https://skupper.io/start/openshift.html#logging-in)
-* [IBM Kubernetes Service](https://skupper.io/start/openshift.html#logging-in)
+* [Google Kubernetes Engine (GKE)](https://skupper.io/start/gke.html#logging-in)
+* [IBM Kubernetes Service](https://skupper.io/start/ibmks.html#logging-in)
 * [OpenShift](https://skupper.io/start/openshift.html#logging-in)
 
 ## Step 3: Set the current namespaces
 
 Use `kubectl create namespace` to create the namespaces you wish
-to use.  Use `kubectl config set-context` to set the current
-namespace for each session.
+to use (or use existing namespaces).  Use `kubectl config
+set-context` to set the current namespace for each session.
 
 Console for cloud:
 
@@ -114,7 +118,7 @@ kubectl config set-context --current --namespace datacenter
 The `skupper init` command installs the Skupper router in the current
 namespace.
 
-**Note:** If you are using Minikube, you need to [start
+**Note:** If you are using Minikube, [you need to start
 `minikube tunnel`][minikube-tunnel] before you install Skupper.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
