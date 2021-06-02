@@ -82,9 +82,9 @@ export KUBECONFIG=~/.kube/config-datacenter
 ## Step 2: Log in to your clusters
 
 The methods for logging in vary by Kubernetes provider.  Find
-the instructions for your chosen provider or providers and use
-them to authenticate and establish access for each console
-session.  See the following links for more information:
+the instructions for your chosen providers and use them to
+authenticate and establish access for each console session.  See
+the following links for more information:
 
 * [Minikube](https://skupper.io/start/minikube.html#logging-in)
 * [Amazon Elastic Kubernetes Service (EKS)](https://docs.aws.amazon.com/eks/latest/userguide/create-kubeconfig.html)
@@ -115,8 +115,8 @@ kubectl config set-context --current --namespace datacenter
 
 ## Step 4: Install Skupper in your namespaces
 
-The `skupper init` command installs the Skupper router in the current
-namespace.
+The `skupper init` command installs the Skupper router and
+service controller in the current namespace.
 
 **Note:** If you are using Minikube, [you need to start
 `minikube tunnel`][minikube-tunnel] before you install Skupper.
