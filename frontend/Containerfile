@@ -1,6 +1,6 @@
-FROM registry.fedoraproject.org/fedora-minimal
+FROM registry.fedoraproject.org/fedora-minimal:34
 
-RUN microdnf install python3 python3-qpid-proton python3-flask && microdnf clean all
+RUN microdnf -y install python3 python3-qpid-proton python3-flask && microdnf clean all
 
 ADD connect.json /etc/messaging/connect.json
 ADD main.py /app/main.py

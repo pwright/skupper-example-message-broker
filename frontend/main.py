@@ -1,4 +1,4 @@
-from flask import Flask, Response, request
+from flask import Flask, Response, request, jsonify
 from moonisland import MoonIsland, SenderQueue, Message
 from threading import Thread, Lock
 from time import sleep

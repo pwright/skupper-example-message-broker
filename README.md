@@ -22,14 +22,14 @@ be deployed across multiple Kubernetes clusters using Skupper.
 It contains three services:
 
 * A message broker running in a private data center.  The broker has
-  a queue named "jobs" and a queue named "results".
+  three queues: "requests", "responses", and "worker-status".
 
-* A job requestor running in the private data center.  It serves a
-  REST API for submitting jobs and getting the results.
+* A frontend service running in the private data center.  It serves
+  a REST API for sending requests and getting responses.
 
-* A job processor running in the public cloud.  It receives from the
-  job queue, does some work, and sends the result to the result
-  queue.
+* A worker service running in the public cloud.  It receives from
+  the request queue, does some work, and sends the result to the
+  response queue.  It also sends periodic status updates.
 
 ## Prerequisites
 
@@ -169,14 +169,14 @@ skupper link status --wait 30
 Console for cloud:
 
 ~~~ shell
-kubectl create deployment job-processor --image quay.io/skupper/job-processor
+kubectl create deployment worker --image quay.io/skupper/job-queue-worker
 ~~~
 
 Console for datacenter:
 
 ~~~ shell
 kubectl apply -f message-broker.yaml
-kubectl create deployment job-requestor --image quay.io/skupper/job-requestor
+kubectl create deployment frontend --image quay.io/skupper/job-queue-frontend
 ~~~
 
 ## Step 7: Expose your services
@@ -185,7 +185,7 @@ Console for datacenter:
 
 ~~~ shell
 skupper expose deployment/message-broker --port 5672
-kubectl expose deployment/job-requestor --port 8080 --type LoadBalancer
+kubectl expose deployment/frontend --port 8080 --type LoadBalancer
 ~~~
 
 ## Step 8: Test your application
@@ -193,5 +193,7 @@ kubectl expose deployment/job-requestor --port 8080 --type LoadBalancer
 Console for datacenter:
 
 ~~~ shell
-curl -d text=hello $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/submit-job')
+curl -i -d text=hello $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/send-request
+curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/responses
+curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/worker-status
 ~~~
