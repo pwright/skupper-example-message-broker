@@ -2,9 +2,10 @@ import collections as _collections
 import proton as _proton
 import proton.handlers as _proton_handlers
 import proton.reactor as _proton_reactor
+import uuid as _uuid
 
 class MoonIsland:
-    def __init__(self, debug=False):
+    def __init__(self, id=None, debug=False):
         self._debug = debug
 
         self._receivers = list()
@@ -14,6 +15,22 @@ class MoonIsland:
         self._events = _proton_reactor.EventInjector()
         self._container = _proton_reactor.Container(_Handler(self))
         self._container.selectable(self._events)
+
+        if id is not None:
+            if "%" in id:
+                id = id.replace("%", str(_uuid.uuid4())[-12:], 1)
+
+            self._container.container_id = id
+
+        self.debug("Created container '{}'", self._container.container_id)
+
+    def debug(self, message, *args):
+        if not self._debug:
+            return
+
+        message = message.format(*args)
+
+        print(f"moonisland: {message}")
 
     def receiver(app, address):
         class _Receiver:
@@ -101,7 +118,7 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             mi_sender_queue._bind(pn_sender)
 
-            print(f"moonisland: Created queue sender for address '{mi_sender_queue._address}'")
+            self._app.debug("Created queue sender for address '{}'", mi_sender_queue._address)
 
         for mi_sender in self._app._senders:
             pn_sender = event.container.create_sender(conn, mi_sender._address)
@@ -110,19 +127,19 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             event.container.schedule(mi_sender._period, _TimerHandler(mi_sender))
 
-            print(f"moonisland: Created periodic sender for address '{mi_sender._address}'")
+            self._app.debug("Created sender for address '{}'", mi_sender._address)
 
         for mi_receiver in self._app._receivers:
             pn_receiver = event.container.create_receiver(conn, mi_receiver._address)
             pn_receiver.mi_receiver = mi_receiver
 
-            print(f"moonisland: Created receiver for address '{mi_receiver._address}'")
+            self._app.debug("Created receiver for address '{}'", mi_receiver._address)
 
     def on_message(self, event):
         message = event.message
         pn_receiver = event.link
 
-        print(f"moonisland: Received message {message.id}")
+        self._app.debug("Received message from '{}'", pn_receiver.source.address)
 
         pn_receiver.mi_receiver(message)
 
@@ -138,4 +155,4 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             pn_sender.send(message)
 
-            print(f"moonisland: Sent message {message.id}")
+            self._app.debug("Sent message to '{}'", pn_sender.target.address)

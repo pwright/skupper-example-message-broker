@@ -11,30 +11,47 @@ def render(app):
 
 @command
 def test(app):
-    generate_readme("skewer.yaml", make_temp_file())
+    with temp_file() as temp:
+        generate_readme("skewer.yaml", temp)
+
     run_example_steps("skewer.yaml")
 
 @command
 def build_images(app):
-    run("podman build -t quay.io/skupper/job-processor processor")
-    run("podman build -t quay.io/skupper/job-requestor requestor")
+    run("podman build -t quay.io/skupper/job-queue-worker worker")
+    run("podman build -t quay.io/skupper/job-queue-frontend frontend")
 
 @command
 def push_images(app):
-    run("podman push quay.io/skupper/job-processor")
-    run("podman push quay.io/skupper/job-requestor")
+    run("podman push quay.io/skupper/job-queue-worker")
+    run("podman push quay.io/skupper/job-queue-frontend")
 
 @command
-def test_services(app):
-    connect_file = write(make_temp_file(), '{"scheme": "amqp", "host": "localhost", "port": 45672}')
+def run_broker(app):
+    run("podman run -it -p 45672:5672 -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker")
 
-    with working_env(MESSAGING_CONNECT_FILE=connect_file):
-        with start("podman run -it -p 45672:5672 -e AMQ_USER=admin -e AMQ_PASSWORD=admin quay.io/artemiscloud/activemq-artemis-broker") as broker:
-            sleep(5)
+connect_data = {
+    "scheme": "amqp",
+    "host": "localhost",
+    "port": 45672,
+}
 
-            with start("python3 processor/main.py"), start("python3 requestor/main.py"):
-                sleep(1)
+@command
+def run_worker(app):
+    with temp_file() as connect_file:
+        write_json(connect_file, connect_data)
 
-                run("curl -i http://0.0.0.0:8080/submit-job -d text=abc123")
+        with working_env(MESSAGING_CONNECT_FILE=connect_file):
+            run("python3 worker/main.py")
 
-                sleep(2)
+@command
+def run_frontend(app):
+    with temp_file() as connect_file:
+        write_json(connect_file, connect_data)
+
+        with working_env(MESSAGING_CONNECT_FILE=connect_file):
+            run("python3 frontend/main.py")
+
+# curl -i http://0.0.0.0:8080/api/send-request -d text=abc
+# curl -i http://0.0.0.0:8080/api/responses
+# curl -i http://0.0.0.0:8080/api/worker-status

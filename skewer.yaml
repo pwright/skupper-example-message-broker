@@ -128,13 +128,13 @@ steps:
   - title: Deploy your services
     commands:
       cloud:
-        - run: kubectl create deployment job-processor --image quay.io/skupper/job-processor
-          await: [deployment/job-processor]
+        - run: kubectl create deployment frontend --image quay.io/skupper/job-queue-frontend
+          await: [deployment/frontend]
       datacenter:
         - run: kubectl apply -f message-broker.yaml
           await: [deployment/message-broker]
-        - run: kubectl create deployment job-requestor --image quay.io/skupper/job-requestor
-          await: [deployment/job-requestor]
+        - run: kubectl create deployment worker --image quay.io/skupper/job-queue-worker
+          await: [deployment/worker]
   - title: Expose your services
     commands:
       datacenter:
@@ -145,5 +145,7 @@ steps:
   - title: Test your application
     commands:
       datacenter:
-        - run: "curl -d text=hello $(kubectl get service/job-requestor -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/submit-job')"
-          sleep: 2
+        - run: "curl -d text=hello $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/send-request')"
+          sleep: 1
+        - run: ""
+          sleep: 1
