@@ -1,7 +1,6 @@
 # Accessing a message broker using Skupper
 
-Use [Skupper](https://skupper.io/) to consume from a job queue in a
-private datacenter and process jobs in the public cloud
+Use public cloud resources to process data from a private message broker
 
 * [Overview](#overview)
 * [Prerequisites](#prerequisites)
@@ -193,7 +192,10 @@ kubectl expose deployment/frontend --port 8080 --type LoadBalancer
 Console for datacenter:
 
 ~~~ shell
-curl -i -d text=hello $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/send-request
-curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/responses
-curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')/api/worker-status
+export FRONTEND=$(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')
+curl -i $FRONTEND/api/send-request -d text=hello
+sleep 10
+curl -i $FRONTEND/api/responses
+curl -i $FRONTEND/api/worker-status
+
 ~~~
