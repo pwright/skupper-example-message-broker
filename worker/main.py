@@ -1,6 +1,9 @@
 from moonisland import MoonIsland, SenderQueue, Message
 from threading import Thread
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 moon = MoonIsland("worker-%", debug=True)
 responses = SenderQueue(moon, "responses")
 
@@ -23,7 +26,7 @@ def receive_request(message):
 @moon.sender("worker-status", period=1.0)
 def send_status_update(sender):
     message = Message("OK")
-    message.properties = { "worker_id": "xxx" }
+    message.properties = { "worker_id": moon.id }
 
     sender.send(message)
 

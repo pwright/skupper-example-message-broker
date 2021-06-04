@@ -9,9 +9,11 @@ Use public cloud resources to process data from a private message broker
 * [Step 3: Set the current namespaces](#step-3-set-the-current-namespaces)
 * [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
 * [Step 5: Link your namespaces](#step-5-link-your-namespaces)
-* [Step 6: Deploy your services](#step-6-deploy-your-services)
-* [Step 7: Expose your services](#step-7-expose-your-services)
-* [Step 8: Test your application](#step-8-test-your-application)
+* [Step 6: Deploy the broker](#step-6-deploy-the-broker)
+* [Step 7: Expose the broker](#step-7-expose-the-broker)
+* [Step 8: Deploy your services](#step-8-deploy-your-services)
+* [Step 9: Expose your services](#step-9-expose-your-services)
+* [Step 10: Test your application](#step-10-test-your-application)
 
 ## Overview
 
@@ -65,16 +67,16 @@ Start a console session for each of your namespaces.  Set the
 `KUBECONFIG` environment variable to a different path in each
 session.
 
-Console for cloud:
+Console for cloud_provider:
 
 ~~~ shell
-export KUBECONFIG=~/.kube/config-cloud
+export KUBECONFIG=~/.kube/config-cloud-provider
 ~~~
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
-export KUBECONFIG=~/.kube/config-datacenter
+export KUBECONFIG=~/.kube/config-data-center
 ~~~
 
 ## Step 2: Log in to your clusters
@@ -97,18 +99,18 @@ Use `kubectl create namespace` to create the namespaces you wish
 to use (or use existing namespaces).  Use `kubectl config
 set-context` to set the current namespace for each session.
 
-Console for cloud:
+Console for cloud_provider:
 
 ~~~ shell
-kubectl create namespace cloud
-kubectl config set-context --current --namespace cloud
+kubectl create namespace cloud-provider
+kubectl config set-context --current --namespace cloud-provider
 ~~~
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
-kubectl create namespace datacenter
-kubectl config set-context --current --namespace datacenter
+kubectl create namespace data-center
+kubectl config set-context --current --namespace data-center
 ~~~
 
 ## Step 4: Install Skupper in your namespaces
@@ -122,13 +124,13 @@ init` command in each namespace.
 **Note:** If you are using Minikube, [you need to start
 `minikube tunnel`][minikube-tunnel] before you install Skupper.
 
-Console for cloud:
+Console for cloud_provider:
 
 ~~~ shell
 skupper init
 ~~~
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
 skupper init --ingress none
@@ -150,52 +152,63 @@ it.
 the token can link to your namespace.  Make sure that only those
 you trust have access to it.
 
-Console for cloud:
+Console for cloud_provider:
 
 ~~~ shell
 skupper token create ~/cloud.token
 ~~~
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
 skupper link create ~/cloud.token
 skupper link status --wait 30
 ~~~
 
-## Step 6: Deploy your services
+## Step 6: Deploy the broker
 
-Console for cloud:
+Console for data_center:
+
+~~~ shell
+kubectl apply -f message-broker.yaml
+~~~
+
+## Step 7: Expose the broker
+
+Console for data_center:
+
+~~~ shell
+skupper expose deployment/message-broker --port 5672
+~~~
+
+## Step 8: Deploy your services
+
+Console for cloud_provider:
 
 ~~~ shell
 kubectl create deployment worker --image quay.io/skupper/job-queue-worker
 ~~~
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
-kubectl apply -f message-broker.yaml
 kubectl create deployment frontend --image quay.io/skupper/job-queue-frontend
 ~~~
 
-## Step 7: Expose your services
+## Step 9: Expose your services
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
-skupper expose deployment/message-broker --port 5672
 kubectl expose deployment/frontend --port 8080 --type LoadBalancer
 ~~~
 
-## Step 8: Test your application
+## Step 10: Test your application
 
-Console for datacenter:
+Console for data_center:
 
 ~~~ shell
-export FRONTEND=$(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080')
-curl -i $FRONTEND/api/send-request -d text=hello
-sleep 10
-curl -i $FRONTEND/api/responses
-curl -i $FRONTEND/api/worker-status
-
+curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/send-request') -d text=hello
+curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/responses')
+curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/worker-status')
 ~~~

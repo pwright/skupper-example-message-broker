@@ -2,6 +2,7 @@ import collections as _collections
 import proton as _proton
 import proton.handlers as _proton_handlers
 import proton.reactor as _proton_reactor
+import traceback as _traceback
 import uuid as _uuid
 
 class MoonIsland:
@@ -24,6 +25,10 @@ class MoonIsland:
 
         self.debug("Created container '{}'", self._container.container_id)
 
+    @property
+    def id(self):
+        return self._container.container_id
+
     def debug(self, message, *args):
         if not self._debug:
             return
@@ -35,27 +40,27 @@ class MoonIsland:
     def receiver(app, address):
         class _Receiver:
             def __init__(self, function):
-                self._function = function
-                self._address = address
+                self.function = function
+                self.address = address
 
                 app._receivers.append(self)
 
             def __call__(self, message):
-                self._function(message)
+                self.function(message)
 
         return _Receiver
 
     def sender(app, address, period):
         class _Sender:
             def __init__(self, function):
-                self._function = function
-                self._address = address
-                self._period = period
+                self.function = function
+                self.address = address
+                self.period = period
 
                 app._senders.append(self)
 
             def __call__(self, sender):
-                self._function(sender)
+                self.function(sender)
 
         return _Sender
 
@@ -64,17 +69,20 @@ class MoonIsland:
             self._container.run()
         except KeyboardInterrupt:
             pass
+        except:
+            _traceback.print_exc()
         finally:
             self._events.close()
 
 class SenderQueue:
     def __init__(self, app, address):
-        self._app = app
-        self._address = address
+        self.app = app
+        self.address = address
+
         self._items = _collections.deque()
         self._event = None
 
-        self._app._sender_queues.append(self)
+        self.app._sender_queues.append(self)
 
     def _bind(self, sender):
         assert self._event is None
@@ -89,7 +97,7 @@ class SenderQueue:
     def send(self, message):
         assert self._event is not None
         self._items.append(message)
-        self._app._events.trigger(self._event)
+        self.app._events.trigger(self._event)
 
 class Message(_proton.Message):
     pass
@@ -102,44 +110,57 @@ class _TimerHandler(_proton_reactor.Handler):
     def on_timer_task(self, event):
         self._sender(self._sender._pn_sender)
 
-        event.container.schedule(self._sender._period, self)
+        event.container.schedule(self._sender.period, self)
 
 class _Handler(_proton_handlers.MessagingHandler):
     def __init__(self, app):
         super().__init__()
-        self._app = app
+        self.app = app
 
     def on_start(self, event):
         conn = event.container.connect()
 
-        for mi_sender_queue in self._app._sender_queues:
-            pn_sender = event.container.create_sender(conn, mi_sender_queue._address)
+        for mi_sender_queue in self.app._sender_queues:
+            pn_sender = event.container.create_sender(conn, mi_sender_queue.address)
             pn_sender.mi_sender_queue = mi_sender_queue
 
             mi_sender_queue._bind(pn_sender)
 
-            self._app.debug("Created queue sender for address '{}'", mi_sender_queue._address)
+            self.app.debug("Created queue sender for address '{}'", mi_sender_queue.address)
 
-        for mi_sender in self._app._senders:
-            pn_sender = event.container.create_sender(conn, mi_sender._address)
+        for mi_sender in self.app._senders:
+            pn_sender = event.container.create_sender(conn, mi_sender.address)
             pn_sender.mi_sender = mi_sender
             mi_sender._pn_sender = pn_sender
 
-            event.container.schedule(mi_sender._period, _TimerHandler(mi_sender))
+            event.container.schedule(mi_sender.period, _TimerHandler(mi_sender))
 
-            self._app.debug("Created sender for address '{}'", mi_sender._address)
+            self.app.debug("Created sender for address '{}'", mi_sender.address)
 
-        for mi_receiver in self._app._receivers:
-            pn_receiver = event.container.create_receiver(conn, mi_receiver._address)
+        for mi_receiver in self.app._receivers:
+            pn_receiver = event.container.create_receiver(conn, mi_receiver.address)
             pn_receiver.mi_receiver = mi_receiver
 
-            self._app.debug("Created receiver for address '{}'", mi_receiver._address)
+            self.app.debug("Created receiver for address '{}'", mi_receiver.address)
+
+    # def on_connection_opening(self, event):
+    #     # XXX I think this should happen automatically.  I seem to need it for the server case.
+    #     event.connection.container = event.container.container_id
+
+    def on_connection_opened(self, event):
+        self.app.debug("Connected to {}", event.connection.url)
+
+    def on_connection_error(self, event):
+        self.app.debug("Failed connecting to {}", event.connection.url)
+
+    def on_transport_error(self, event):
+        self.app.debug("Failed connecting to {}", event.connection.url)
 
     def on_message(self, event):
         message = event.message
         pn_receiver = event.link
 
-        self._app.debug("Received message from '{}'", pn_receiver.source.address)
+        self.app.debug("Received message from '{}'", pn_receiver.source.address)
 
         pn_receiver.mi_receiver(message)
 
@@ -155,4 +176,4 @@ class _Handler(_proton_handlers.MessagingHandler):
 
             pn_sender.send(message)
 
-            self._app.debug("Sent message to '{}'", pn_sender.target.address)
+            self.app.debug("Sent message to '{}'", pn_sender.target.address)

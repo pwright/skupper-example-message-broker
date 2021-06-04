@@ -4,6 +4,9 @@ from threading import Thread, Lock
 from time import sleep
 from uuid import uuid4
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 # AMQP
 
 moon = MoonIsland("frontend-%", debug=True)
