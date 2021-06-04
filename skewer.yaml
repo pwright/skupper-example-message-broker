@@ -16,18 +16,7 @@ overview: |-
   * A worker service running in the public cloud.  It receives from
     the request queue, does some work, and sends the result to the
     response queue.  It also sends periodic status updates.
-prerequisites: |-
-  * The `kubectl` command-line tool, version 1.15 or later
-    ([installation guide][install-kubectl])
-
-  * The `skupper` command-line tool, the latest version ([installation
-    guide][install-skupper])
-
-  * Access to two Kubernetes namespaces, from any providers you
-    choose, on any clusters you choose
-
-  [install-kubectl]: https://kubernetes.io/docs/tasks/tools/install-kubectl/
-  [install-skupper]: https://skupper.io/start/index.html#step-1-install-the-skupper-command-line-tool-in-your-environment
+prerequisites: !string prerequisites
 contexts:
   cloud_provider:
     kubeconfig: ~/.kube/config-cloud-provider
@@ -37,48 +26,16 @@ contexts:
     namespace: data-center
 steps:
   - title: Configure separate console sessions
-    preamble: |-
-      Skupper is designed for use with multiple namespaces, typically on
-      different clusters.  The `skupper` command uses your
-      [kubeconfig][kubeconfig] and current context to select the namespace
-      where it operates.
-
-      [kubeconfig]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
-
-      Your kubeconfig is stored in a file in your home directory.  The
-      `skupper` and `kubectl` commands use the `KUBECONFIG` environment
-      variable to locate it.
-
-      A single kubeconfig supports only one active context per user.
-      Since you will be using multiple contexts at once in this
-      exercise, you need to create distinct kubeconfigs.
-
-      Start a console session for each of your namespaces.  Set the
-      `KUBECONFIG` environment variable to a different path in each
-      session.
+    preamble: !string configure_separate_console_sessions_preamble
     commands:
       cloud_provider:
         - run: export KUBECONFIG=~/.kube/config-cloud-provider
       data_center:
         - run: export KUBECONFIG=~/.kube/config-data-center
   - title: Log in to your clusters
-    preamble: |-
-      The methods for logging in vary by Kubernetes provider.  Find
-      the instructions for your chosen providers and use them to
-      authenticate and establish access for each console session.  See
-      the following links for more information:
-
-      * [Minikube](https://skupper.io/start/minikube.html#logging-in)
-      * [Amazon Elastic Kubernetes Service (EKS)](https://docs.aws.amazon.com/eks/latest/userguide/create-kubeconfig.html)
-      * [Azure Kubernetes Service (AKS)](https://docs.microsoft.com/en-us/azure/aks/kubernetes-walkthrough#connect-to-the-cluster)
-      * [Google Kubernetes Engine (GKE)](https://skupper.io/start/gke.html#logging-in)
-      * [IBM Kubernetes Service](https://skupper.io/start/ibmks.html#logging-in)
-      * [OpenShift](https://skupper.io/start/openshift.html#logging-in)
+    preamble: !string log_in_to_your_clusters_preamble
   - title: Set the current namespaces
-    preamble: |-
-      Use `kubectl create namespace` to create the namespaces you wish
-      to use (or use existing namespaces).  Use `kubectl config
-      set-context` to set the current namespace for each session.
+    preamble: !string set_the_current_namespaces_preamble
     commands:
       cloud_provider:
         - run: kubectl create namespace cloud-provider
@@ -87,15 +44,7 @@ steps:
         - run: kubectl create namespace data-center
         - run: kubectl config set-context --current --namespace data-center
   - title: Install Skupper in your namespaces
-    preamble: |-
-      The `skupper init` command installs the Skupper router and
-      service controller in the current namespace.  Run the `skupper
-      init` command in each namespace.
-
-      [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
-
-      **Note:** If you are using Minikube, [you need to start
-      `minikube tunnel`][minikube-tunnel] before you install Skupper.
+    preamble: !string install_skupper_in_your_namespaces_preamble
     commands:
       cloud_provider:
         - run: skupper init
@@ -104,25 +53,12 @@ steps:
         - run: skupper init --ingress none
           await: [deployment/skupper-service-controller, deployment/skupper-router]
   - title: Link your namespaces
-    preamble: |-
-      Creating a link requires use of two `skupper` commands in
-      conjunction, `skupper token create` and
-      `skupper link create`.
-
-      The `skupper token create` command generates a secret token that
-      signifies permission to create a link.  The token also carries
-      the link details.  The `skupper link create` command then uses
-      the link token to create a link to the namespace that generated
-      it.
-
-      **Note:** The link token is truly a *secret*.  Anyone who has
-      the token can link to your namespace.  Make sure that only those
-      you trust have access to it.
+    preamble: !string link_your_namespaces_preamble
     commands:
       cloud_provider:
-        - run: skupper token create ~/cloud.token
+        - run: skupper token create ~/cloud-provider.token
       data_center:
-        - run: skupper link create ~/cloud.token
+        - run: skupper link create ~/cloud-provider.token
         - run: skupper link status --wait 30
   # - title: Deploy your services
   #   commands:
@@ -141,17 +77,14 @@ steps:
   #         await: [service/message-broker]
   #       - run: kubectl expose deployment/frontend --port 8080 --type LoadBalancer
   #         await: [service/frontend]
-  - title: Deploy the broker
+  - title: Deploy and expose the message broker
     commands:
       data_center:
         - run: kubectl apply -f message-broker.yaml
           await: [deployment/message-broker]
-  - title: Expose the broker
-    commands:
-      data_center:
         - run: skupper expose deployment/message-broker --port 5672
           await: [service/message-broker]
-  - title: Deploy your services
+  - title: Deploy the frontend and worker services
     commands:
       cloud_provider:
         - run: kubectl create deployment worker --image quay.io/skupper/job-queue-worker
@@ -159,16 +92,12 @@ steps:
       data_center:
         - run: kubectl create deployment frontend --image quay.io/skupper/job-queue-frontend
           await: [deployment/frontend]
-  - title: Expose your services
-    commands:
-      data_center:
         - run: kubectl expose deployment/frontend --port 8080 --type LoadBalancer
-          await: [service/frontend]
-          sleep: 5
-  - title: Test your application
+          await_external_ip: [service/frontend]
+  - title: Test the application
     commands:
       data_center:
         - run: "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/send-request') -d text=hello"
-          sleep: 1
+          sleep: 0.5
         - run: "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/responses')"
         - run: "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/worker-status')"
