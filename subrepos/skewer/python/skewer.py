@@ -77,6 +77,7 @@ def run_steps_on_minikube(skewer_file):
 
     try:
         run(f"minikube start -p {minikube_profile}")
+        run(f"minikube profile {minikube_profile}")
 
         contexts = skewer_data["contexts"]
 
@@ -91,7 +92,7 @@ def run_steps_on_minikube(skewer_file):
             with start("minikube tunnel", output=tunnel_output_file):
                 execute_steps(work_dir, skewer_data)
     finally:
-        run(f"minikube delete -p {minikube_profile}")
+        run(f"minikube delete -p skewer")
 
 def run_steps_external(skewer_file, **kubeconfigs):
     with open(skewer_file) as file:

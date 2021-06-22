@@ -1,0 +1,150 @@
+bash-5.1$ plano test
+--> test
+plano: notice: Running command 'minikube start -p minikube'
+😄  minikube v1.21.0 on Fedora 34
+✨  Automatically selected the kvm2 driver
+👍  Starting control plane node minikube in cluster minikube
+🔥  Creating kvm2 VM (CPUs=2, Memory=2200MB, Disk=20000MB) ...
+🐳  Preparing Kubernetes v1.20.7 on Docker 20.10.6 ...
+    ▪ Generating certificates and keys ...
+    ▪ Booting up control plane ...
+    ▪ Configuring RBAC rules ...
+🔎  Verifying Kubernetes components...
+    ▪ Using image gcr.io/k8s-minikube/storage-provisioner:v5
+🌟  Enabled addons: storage-provisioner, default-storageclass
+🏄  Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
+plano: notice: Running command 'minikube update-context'
+🎉  "minikube" context has been updated to point to 192.168.39.45:8443
+💗  Current context is "minikube"
+plano: notice: Running command 'minikube update-context'
+🎉  "minikube" context has been updated to point to 192.168.39.45:8443
+💗  Current context is "minikube"
+plano: notice: Starting command 'minikube tunnel'
+plano: notice: Running command 'export KUBECONFIG=/tmp/plano-wald9tr3/.kube/config-cloud-provider'
+plano: notice: Running command 'export KUBECONFIG=/tmp/plano-wald9tr3/.kube/config-data-center'
+plano: notice: Running command 'kubectl create namespace cloud-provider'
+namespace/cloud-provider created
+plano: notice: Running command 'kubectl config set-context --current --namespace cloud-provider'
+Context "minikube" modified.
+plano: notice: Running command 'kubectl create namespace data-center'
+namespace/data-center created
+plano: notice: Running command 'kubectl config set-context --current --namespace data-center'
+Context "minikube" modified.
+plano: notice: Running command 'skupper init'
+Waiting for LoadBalancer IP or hostname...
+[sudo] password for paulwright: 
+Skupper is now installed in namespace 'cloud-provider'.  Use 'skupper status' to get more information.
+plano: notice: Waiting for deployment/skupper-service-controller to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/skupper-service-controller'
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+skupper-service-controller   0/1     1            0           1s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/skupper-service-controller'
+deployment.apps/skupper-service-controller condition met
+plano: notice: Waiting for deployment/skupper-router to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/skupper-router'
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+skupper-router   0/1     1            0           50s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/skupper-router'
+deployment.apps/skupper-router condition met
+plano: notice: Running command 'skupper init --ingress none'
+Skupper is now installed in namespace 'data-center'.  Use 'skupper status' to get more information.
+plano: notice: Waiting for deployment/skupper-service-controller to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/skupper-service-controller'
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+skupper-service-controller   0/1     1            0           2s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/skupper-service-controller'
+deployment.apps/skupper-service-controller condition met
+plano: notice: Waiting for deployment/skupper-router to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/skupper-router'
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+skupper-router   1/1     1            1           7s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/skupper-router'
+deployment.apps/skupper-router condition met
+plano: notice: Running command 'skupper token create /tmp/plano-wald9tr3/cloud-provider.token'
+Connection token written to /tmp/plano-wald9tr3/cloud-provider.token 
+plano: notice: Running command 'skupper link create /tmp/plano-wald9tr3/cloud-provider.token'
+Skupper configured to connect to 10.107.50.103:55671 (name=conn1)
+plano: notice: Running command 'skupper link status --wait 30'
+Connection for conn1 is active
+plano: notice: Running command 'kubectl apply -f message-broker.yaml'
+deployment.apps/message-broker created
+plano: notice: Waiting for deployment/message-broker to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/message-broker'
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+message-broker   0/1     1            0           1s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/message-broker'
+deployment.apps/message-broker condition met
+plano: notice: Running command 'skupper expose deployment/message-broker --port 5672'
+deployment message-broker exposed as message-broker
+plano: notice: Waiting for service/message-broker to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get service/message-broker'
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+message-broker   ClusterIP   10.110.183.218   <none>        5672/TCP   1s
+plano: notice: Running command 'kubectl create deployment worker --image quay.io/skupper/job-queue-worker'
+deployment.apps/worker created
+plano: notice: Waiting for deployment/worker to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/worker'
+NAME     READY   UP-TO-DATE   AVAILABLE   AGE
+worker   0/1     1            0           1s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/worker'
+deployment.apps/worker condition met
+plano: notice: Running command 'kubectl create deployment frontend --image quay.io/skupper/job-queue-frontend'
+deployment.apps/frontend created
+plano: notice: Waiting for deployment/frontend to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get deployment/frontend'
+NAME       READY   UP-TO-DATE   AVAILABLE   AGE
+frontend   0/1     1            0           2s
+plano: notice: Running command 'kubectl wait --for condition=available --timeout 180s deployment/frontend'
+deployment.apps/frontend condition met
+plano: notice: Running command 'kubectl expose deployment/frontend --port 8080 --type LoadBalancer'
+service/frontend exposed
+plano: notice: Waiting for service/frontend to become available
+plano: notice: Sleeping for 1 second
+plano: notice: Running command 'kubectl get service/frontend'
+NAME       TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
+frontend   LoadBalancer   10.104.1.185   <pending>     8080:30306/TCP   1s
+plano: notice: Sleeping for 1 second
+plano: notice: Calling "kubectl get service/frontend -o jsonpath='{.status.loadBalancer.ingress}'"
+plano: notice: Sleeping for 1 second
+plano: notice: Calling "kubectl get service/frontend -o jsonpath='{.status.loadBalancer.ingress}'"
+plano: notice: Running command "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/send-request') -d text=hello"
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 74
+Server: Werkzeug/1.0.1 Python/3.9.5
+Date: Mon, 21 Jun 2021 13:27:20 GMT
+
+{"error":null,"id":"a2a13a8d-2982-455e-99a2-afc92b9764aa","text":"hello"}
+plano: notice: Sleeping for 0.5 seconds
+plano: notice: Running command "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/responses')"
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 3
+Server: Werkzeug/1.0.1 Python/3.9.5
+Date: Mon, 21 Jun 2021 13:27:21 GMT
+
+{}
+plano: notice: Running command "curl -i $(kubectl get service/frontend -o jsonpath='http://{.status.loadBalancer.ingress[0].ip}:8080/api/worker-status')"
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 3
+Server: Werkzeug/1.0.1 Python/3.9.5
+Date: Mon, 21 Jun 2021 13:27:21 GMT
+
+{}
+plano: notice: Killing process 79375 (command 'minikube tunnel')
+plano: notice: Running command 'minikube delete -p skewer'
+🔥  Deleting "skewer" in kvm2 ...
+💀  Removed all traces of the "skewer" cluster.
+<-- test
+OK (250s)
+bash-5.1$ 
+bash-5.1$ plano test
