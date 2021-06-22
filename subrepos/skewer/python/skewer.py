@@ -92,7 +92,7 @@ def run_steps_on_minikube(skewer_file):
             with start("minikube tunnel", output=tunnel_output_file):
                 execute_steps(work_dir, skewer_data)
     finally:
-        run(f"minikube delete -p skewer")
+        run(f"minikube status")
 
 def run_steps_external(skewer_file, **kubeconfigs):
     with open(skewer_file) as file:
